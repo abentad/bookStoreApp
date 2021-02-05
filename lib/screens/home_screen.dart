@@ -1,8 +1,11 @@
 import 'dart:convert';
 
+import 'package:BookApp/screens/details_screen.dart';
+import 'package:BookApp/widgets/myBookCover.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:connectivity/connectivity.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -11,6 +14,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List booksList;
+  bool isConnectedToInternet = false;
+  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   Future getData() async {
     http.Response response =
         await http.get('https://ab-books-api.vercel.app/books');
@@ -20,10 +26,42 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void checkConnection() async {
+    var connectivityResult = await (Connectivity().checkConnectivity());
+    if (connectivityResult == ConnectivityResult.mobile) {
+      setState(() {
+        isConnectedToInternet = true;
+      });
+    } else if (connectivityResult == ConnectivityResult.wifi) {
+      setState(() {
+        isConnectedToInternet = true;
+      });
+    } else if (connectivityResult == ConnectivityResult.none) {
+      showInSnackBar(bgColor: Colors.red, value: "No Internet");
+      setState(() {
+        isConnectedToInternet = false;
+      });
+    }
+  }
+
+  void showInSnackBar({String value, Color bgColor}) {
+    _scaffoldKey.currentState.showSnackBar(
+      new SnackBar(
+        content: new Text(value,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: bgColor,
+        duration: Duration(seconds: 5),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    getData();
+    checkConnection();
+    if (isConnectedToInternet = true) {
+      getData();
+    }
   }
 
   @override
@@ -32,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final devWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: booksList == null
           ? null
           : AppBar(
@@ -107,6 +146,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemCount: booksList.length,
                       itemBuilder: (context, index) {
                         return myBookCover(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => DetailScreen(
+                                  selectedBook: booksList[index],
+                                ),
+                              ),
+                            );
+                          },
                           title: booksList[index]['title'],
                           imgUrl: booksList[index]['posterImage'],
                           datePosted: DateFormat('yMMMMd').format(
@@ -123,53 +171,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-    );
-  }
-
-  Widget myBookCover({String title, String datePosted, String imgUrl}) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 15.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () {
-              print('pressed');
-            },
-            child: Container(
-              height: 200.0,
-              width: 150.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(5.0),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white,
-                    Colors.grey[300],
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                image: DecorationImage(
-                  image: NetworkImage(imgUrl),
-                  fit: BoxFit.fill,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey[400],
-                    offset: Offset(2, 7),
-                    blurRadius: 20.0,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 10.0),
-          Text(title, style: TextStyle(fontWeight: FontWeight.w600)),
-          SizedBox(height: 3.0),
-          Text(datePosted,
-              style: TextStyle(fontSize: 10.0, color: Colors.grey)),
-        ],
-      ),
     );
   }
 }
